@@ -1,0 +1,32 @@
+/**
+ * Tool type definitions and base interfaces.
+ */
+
+export interface Tool {
+  /** Unique tool name (must match what LLM sends back) */
+  name: string;
+
+  /** Human-readable description sent to the LLM */
+  description: string;
+
+  /** JSON Schema for the tool's input parameters */
+  parameters: Record<string, unknown>;
+
+  /**
+   * Execute the tool with the given arguments.
+   * Returns the result as a string (may be JSON-serialized).
+   */
+  execute(args: Record<string, unknown>): Promise<string>;
+}
+
+/** Result returned by a tool execution. */
+export interface ToolResult {
+  /** Tool name that produced this result */
+  tool: string;
+  /** Result content (plain text or JSON string) */
+  content: string;
+  /** Whether the tool call succeeded */
+  success: boolean;
+  /** Optional error message if success is false */
+  error?: string;
+}
