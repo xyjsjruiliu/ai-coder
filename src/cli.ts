@@ -3,7 +3,7 @@
  * AI Coder — CLI entry point.
  *
  * Usage:
- *   ai-coder                      # interactive REPL
+ *   ai-coder                      # interactive TUI (Ink)
  *   ai-coder "write a LRU cache"  # single-shot print mode
  *   ai-coder -p "query"           # explicit print mode
  *   ai-coder --list-models        # show available models
@@ -13,9 +13,12 @@
 import { Command } from 'commander';
 import { readConfig } from './config/loader.js';
 import { runPrintMode } from './commands/print.js';
-import { runReplMode } from './commands/repl.js';
+import { createProvider } from './commands/repl.js';
 import { type LLMProvider, ProviderError } from './llm/types.js';
 import { ProviderFactory } from './llm/factory.js';
+import { AgentLoop } from './agent/loop.js';
+import { ToolRegistry } from './tools/registry.js';
+import { renderUI } from './ui/index.js';
 
 // ─── Version ──────────────────────────────────────────────────────────────────
 
@@ -130,15 +133,31 @@ async function main() {
         });
       }
 
-      // ── Interactive REPL mode ───────────────────────────────────────────
-      return runReplMode({
-        model: opts.model ?? config.defaults.model,
-        provider: resolveProvider(config, opts.provider),
-        maxTurns: opts.maxTurns ?? config.defaults.maxTurns,
-        apiKey: resolveApiKey(config, resolveProvider(config, opts.provider)),
-        continue: opts.continue ?? false,
+      // ── Interactive TUI mode (Ink) ──────────────────────────────────────
+      const provider = resolveProvider(config, opts.provider);
+      const apiKey = resolveApiKey(config, provider);
+      const model = opts.model ?? config.defaults.model;
+      const maxTurns = opts.maxTurns ?? config.defaults.maxTurns;
+
+      if (!apiKey) {
+        console.error(`Error: No API key found for provider "${provider}".`);
+        console.error(`Set the appropriate environment variable or configure ~/.ai-coder/config.json`);
+        process.exit(1);
+      }
+
+      // Create LLM provider
+      const llmProvider = createProvider(provider, apiKey);
+
+      // Create AgentLoop
+      const toolRegistry = new ToolRegistry();
+      const agentLoop = new AgentLoop(llmProvider, toolRegistry, model, {
+        maxTurns,
+        systemPrompt: 'You are an AI coding assistant. Help the user with programming tasks.',
         debug: opts.debug ?? false,
       });
+
+      // Launch Ink TUI
+      renderUI(agentLoop, model, provider);
     });
 
   await program.parseAsync(process.argv);

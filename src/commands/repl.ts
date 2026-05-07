@@ -22,10 +22,10 @@ export interface ReplOptions {
 
 // ─── Provider Creation ────────────────────────────────────────────────────────
 
-function createProvider(
+export function createProvider(
   provider: 'anthropic' | 'openai' | 'openrouter' | 'ollama',
   apiKey: string | null,
-  debug: boolean,
+  _debug?: boolean,
 ): LLMProvider {
   // Try env var — but only if it matches the requested provider type
   const envProvider = ProviderFactory.createFromEnv();
@@ -33,7 +33,7 @@ function createProvider(
     if (envProvider.providerName === provider) {
       return envProvider;
     }
-    if (debug) {
+    if (_debug) {
       process.stderr.write(`⚠  ENV has ${envProvider.providerName} key, requested ${provider} — skipping env\n`);
     }
   }
