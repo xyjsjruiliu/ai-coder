@@ -4,7 +4,8 @@
  * Supported providers:
  * - anthropic  → AnthropicProvider
  * - openai     → OpenAIProvider
- * - openrouter → OpenAIProvider with OpenRouter base URL and special headers
+ * - openrouter → OpenAIProvider with OpenRouter base URL
+ * - ollama     → OpenAIProvider at localhost:11434 (no key needed)
  */
 
 import { AnthropicProvider } from './anthropic.js';
@@ -14,11 +15,12 @@ import type { LLMProvider } from './types.js';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const OLLAMA_BASE_URL = 'http://localhost:11434';
 
 // ─── Provider Config ──────────────────────────────────────────────────────────
 
 export interface ProviderConfig {
-  provider: 'anthropic' | 'openai' | 'openrouter';
+  provider: 'anthropic' | 'openai' | 'openrouter' | 'ollama';
   apiKey: string;
   baseUrl?: string;
 }
@@ -36,11 +38,17 @@ export class ProviderFactory {
         return new OpenAIProvider(config.apiKey, config.baseUrl);
 
       case 'openrouter':
-        // OpenRouter uses OpenAI-compatible API at its own base URL
-        // The API key can be an OpenRouter key
         return new OpenAIProvider(
-          config.apiKey,
-          config.baseUrl ?? OPENROUTER_BASE_URL,
+          config.apiKey || process.env.OPENROUTER_API_KEY || '',
+          config.baseUrl || OPENROUTER_BASE_URL,
+        );
+
+      case 'ollama':
+        // Ollama is OpenAI-compatible at localhost:11434/v1
+        // No real API key needed — any non-empty string works
+        return new OpenAIProvider(
+          config.apiKey || 'ollama',
+          config.baseUrl || OLLAMA_BASE_URL,
         );
 
       default:

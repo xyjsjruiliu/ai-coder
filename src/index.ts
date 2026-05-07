@@ -35,4 +35,5 @@ export { ToolRegistry } from './tools/registry.js';
 export type { Tool, ToolResult } from './tools/types.js';
 
 // ── Config ─────────────────────────────────────────────────────────────────
-export { readConfig } from './config/loader.js';
+export { readConfig, resetConfigCache, ConfigSchema } from './config/loader.js';
+export type { AICoderConfig, ProviderConfig } from './config/loader.js';
