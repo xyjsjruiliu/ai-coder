@@ -1,7 +1,10 @@
 /**
- * Print mode — single-shot: send a query, stream back the result, exit.
+ * Print mode — single-shot: send a query, run the agent loop with tools,
+ * stream back the result, exit.
  */
 
+import { AgentLoop } from '../agent/loop.js';
+import { ToolRegistry } from '../tools/registry.js';
 import { ProviderFactory } from '../llm/factory.js';
 import type { LLMProvider } from '../llm/types.js';
 
@@ -84,17 +87,23 @@ export async function runPrintMode(opts: PrintOptions): Promise<void> {
     process.stderr.write(`[debug] query: ${opts.query.slice(0, 80)}${opts.query.length > 80 ? '...' : ''}\n`);
   }
 
-  // ── Send query ──────────────────────────────────────────────────────────
+  // ── Set up AgentLoop with tools ─────────────────────────────────────────
+
+  const toolRegistry = new ToolRegistry();
+  const agent = new AgentLoop(provider, toolRegistry, opts.model, {
+    maxTurns: opts.maxTurns,
+    systemPrompt: 'You are an AI coding assistant. Be concise and helpful. When you need to read or edit files, use the available tools.',
+    debug: opts.debug,
+  });
+
+  // ── Run agent ───────────────────────────────────────────────────────────
 
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let hasOutput = false;
 
   try {
-    const stream = provider.chat(
-      [{ role: 'user', content: opts.query }],
-      { model: opts.model },
-    );
+    const stream = agent.run(opts.query);
 
     for await (const chunk of stream) {
       switch (chunk.type) {
@@ -110,9 +119,13 @@ export async function runPrintMode(opts: PrintOptions): Promise<void> {
           break;
 
         case 'tool_input':
+          // Tool result — show in debug mode
           break;
 
         case 'thinking_delta':
+          if (opts.debug) {
+            process.stderr.write(chunk.data);
+          }
           break;
 
         case 'stop':

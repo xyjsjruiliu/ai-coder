@@ -26,7 +26,7 @@ export class ToolRegistry {
     description: string;
     input_schema: Record<string, unknown>;
   }> {
-    return [...this.tools.values()].map((t) => ({
+    return Array.from(this.tools.values()).map((t) => ({
       name: t.name,
       description: t.description,
       input_schema: t.parameters,

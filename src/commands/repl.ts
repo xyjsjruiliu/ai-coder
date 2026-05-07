@@ -1,8 +1,11 @@
 /**
  * REPL mode — interactive agent loop (text-only, no Ink UI yet).
+ * Uses AgentLoop for multi-turn conversation with full tool support.
  */
 
 import * as readline from 'node:readline';
+import { AgentLoop } from '../agent/loop.js';
+import { ToolRegistry } from '../tools/registry.js';
 import { ProviderFactory } from '../llm/factory.js';
 import type { LLMProvider, UnifiedMessage } from '../llm/types.js';
 
@@ -60,6 +63,7 @@ function printWelcome(model: string, provider: string): void {
     'Type a query and press Enter. Special commands:',
     '  /help          show this message',
     '  /model <id>    switch model',
+    '  /tools         list available tools',
     '  /clear         clear conversation history',
     '  /debug         toggle debug mode',
     '  /exit          quit (or Ctrl+C / Ctrl+D)',
@@ -81,8 +85,15 @@ export async function runReplMode(opts: ReplOptions): Promise<void> {
 
   let model = opts.model;
   let debug = opts.debug;
-  let messages: UnifiedMessage[] = [];
   let running = true;
+
+  // ── Set up AgentLoop ─────────────────────────────────────────────────────
+  const toolRegistry = new ToolRegistry();
+  let agent = new AgentLoop(provider, toolRegistry, model, {
+    maxTurns: opts.maxTurns,
+    systemPrompt: 'You are an AI coding assistant. Be concise and helpful. When you need to read or edit files, use the available tools.',
+    debug,
+  });
 
   printWelcome(model, provider.providerName);
 
@@ -119,8 +130,23 @@ export async function runReplMode(opts: ReplOptions): Promise<void> {
           rl.prompt();
           return;
 
+        case 'tools':
+          {
+            const defs = toolRegistry.getDefinitions();
+            if (defs.length === 0) {
+              process.stdout.write('No tools registered.\n');
+            } else {
+              process.stdout.write(`Available tools (${defs.length}):\n`);
+              for (const d of defs) {
+                process.stdout.write(`  • ${d.name} — ${d.description}\n`);
+              }
+            }
+          }
+          rl.prompt();
+          return;
+
         case 'clear':
-          messages = [];
+          agent.reset();
           process.stdout.write('Conversation cleared.\n');
           rl.prompt();
           return;
@@ -131,6 +157,12 @@ export async function runReplMode(opts: ReplOptions): Promise<void> {
             process.stdout.write(`Current model: ${model}\n`);
           } else {
             model = args[0];
+            // Rebuild agent with new model
+            agent = new AgentLoop(provider, toolRegistry, model, {
+              maxTurns: opts.maxTurns,
+              systemPrompt: 'You are an AI coding assistant. Be concise and helpful.',
+              debug,
+            });
             process.stdout.write(`Switched to model: ${model}\n`);
           }
           rl.prompt();
@@ -140,6 +172,12 @@ export async function runReplMode(opts: ReplOptions): Promise<void> {
         case 'debug':
         case 'd':
           debug = !debug;
+          // Rebuild agent with new debug setting
+          agent = new AgentLoop(provider, toolRegistry, model, {
+            maxTurns: opts.maxTurns,
+            systemPrompt: 'You are an AI coding assistant. Be concise and helpful.',
+            debug,
+          });
           process.stdout.write(`Debug mode: ${debug ? 'ON' : 'OFF'}\n`);
           rl.prompt();
           return;
@@ -156,15 +194,13 @@ export async function runReplMode(opts: ReplOptions): Promise<void> {
       return;
     }
 
-    messages.push({ role: 'user', content: trimmed });
     rl.pause();
 
     try {
-      const stream = provider.chat(messages, { model });
-      let totalInputTokens = 0;
-      let totalOutputTokens = 0;
+      const stream = agent.run(trimmed);
       let assistantText = '';
       let outputStarted = false;
+      let turnStats = { input: 0, output: 0 };
 
       for await (const chunk of stream) {
         switch (chunk.type) {
@@ -178,12 +214,14 @@ export async function runReplMode(opts: ReplOptions): Promise<void> {
             break;
 
           case 'tool_call':
-            if (debug) {
-              process.stderr.write(`\n  [tool: ${chunk.data.name}]\n`);
-            }
+            if (outputStarted) process.stdout.write('\n');
+            process.stdout.write(`  🔧 ${chunk.data.name}`);
+            outputStarted = false;
             break;
 
           case 'tool_input':
+            // Tool result — show indicator
+            process.stdout.write(' ✓');
             break;
 
           case 'thinking_delta':
@@ -194,8 +232,15 @@ export async function runReplMode(opts: ReplOptions): Promise<void> {
 
           case 'stop':
             if (chunk.usage) {
-              totalInputTokens = chunk.usage.input_tokens;
-              totalOutputTokens = chunk.usage.output_tokens;
+              turnStats = {
+                input: chunk.usage.input_tokens || 0,
+                output: chunk.usage.output_tokens || 0,
+              };
+            }
+            if (chunk.stop_reason?.startsWith('turn_error:')) {
+              process.stderr.write(`\n⚠ ${chunk.stop_reason.slice(12)}\n`);
+            } else if (chunk.stop_reason?.startsWith('aborted:')) {
+              process.stderr.write(`\n⛔ ${chunk.stop_reason.slice(9)}\n`);
             }
             break;
         }
@@ -204,12 +249,12 @@ export async function runReplMode(opts: ReplOptions): Promise<void> {
       if (outputStarted) {
         process.stdout.write('\n');
       }
-      if (assistantText) {
-        messages.push({ role: 'assistant', content: assistantText });
-      }
 
       if (debug) {
-        process.stderr.write(`Tokens: ${totalInputTokens}↑/${totalOutputTokens}↓\n`);
+        const state = agent.getState();
+        process.stderr.write(
+          `[debug] turns=${state.turns} tokens=${state.totalInputTokens}↑/${state.totalOutputTokens}↓ cost≈$${state.totalCost.toFixed(4)}\n`,
+        );
       }
 
     } catch (err: any) {
@@ -217,10 +262,8 @@ export async function runReplMode(opts: ReplOptions): Promise<void> {
       if (debug && err.stack) {
         process.stderr.write(`${err.stack}\n`);
       }
-      messages.pop();
     }
 
-    rl.resume();
     rl.prompt();
   });
 
