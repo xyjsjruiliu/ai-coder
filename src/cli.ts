@@ -19,6 +19,9 @@ import { ProviderFactory } from './llm/factory.js';
 import { AgentLoop } from './agent/loop.js';
 import { ToolRegistry } from './tools/registry.js';
 import { readFileTool } from './tools/read_file.js';
+import { writeFileTool } from './tools/write_file.js';
+import { editFileTool } from './tools/edit_file.js';
+import { createTerminalApprover } from './utils/approver.js';
 import { renderUI } from './ui/index.js';
 
 // ─── Version ──────────────────────────────────────────────────────────────────
@@ -151,8 +154,13 @@ async function main() {
 
       // Create AgentLoop with workspace tools
       const workspaceRoot = process.cwd();
-      const toolRegistry = new ToolRegistry({ workspaceRoot });
+      const toolRegistry = new ToolRegistry({
+        workspaceRoot,
+        approver: createTerminalApprover(),
+      });
       toolRegistry.register(readFileTool);
+      toolRegistry.register(writeFileTool);
+      toolRegistry.register(editFileTool);
       const agentLoop = new AgentLoop(llmProvider, toolRegistry, model, {
         maxTurns,
         systemPrompt: 'You are an AI coding assistant. Help the user with programming tasks.',

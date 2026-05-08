@@ -7,6 +7,9 @@ import * as readline from 'node:readline';
 import { AgentLoop } from '../agent/loop.js';
 import { ToolRegistry } from '../tools/registry.js';
 import { readFileTool } from '../tools/read_file.js';
+import { writeFileTool } from '../tools/write_file.js';
+import { editFileTool } from '../tools/edit_file.js';
+import { createTerminalApprover } from '../utils/approver.js';
 import { ProviderFactory } from '../llm/factory.js';
 import type { LLMProvider, UnifiedMessage } from '../llm/types.js';
 
@@ -89,8 +92,13 @@ export async function runReplMode(opts: ReplOptions): Promise<void> {
   let running = true;
 
   // ── Set up AgentLoop ─────────────────────────────────────────────────────
-  const toolRegistry = new ToolRegistry({ workspaceRoot: process.cwd() });
+  const toolRegistry = new ToolRegistry({
+    workspaceRoot: process.cwd(),
+    approver: createTerminalApprover(),
+  });
   toolRegistry.register(readFileTool);
+  toolRegistry.register(writeFileTool);
+  toolRegistry.register(editFileTool);
   let agent = new AgentLoop(provider, toolRegistry, model, {
     maxTurns: opts.maxTurns,
     systemPrompt: 'You are an AI coding assistant. Be concise and helpful. When you need to read or edit files, use the available tools.',

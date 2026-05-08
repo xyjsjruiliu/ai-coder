@@ -33,6 +33,8 @@ export type { AgentConfig, AgentState } from './agent/loop.js';
 // ── Tools ──────────────────────────────────────────────────────────────────
 export { ToolRegistry } from './tools/registry.js';
 export { readFileTool } from './tools/read_file.js';
+export { writeFileTool } from './tools/write_file.js';
+export { editFileTool } from './tools/edit_file.js';
 export type { Tool, ToolContext, ToolResult } from './tools/types.js';
 
 // ── Config ─────────────────────────────────────────────────────────────────

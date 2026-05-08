@@ -6,6 +6,11 @@
 export interface ToolContext {
   /** Absolute path to the workspace root. All file paths are relative to this. */
   workspaceRoot: string;
+  /**
+   * Optional approval callback. Destructive tools (write, edit, bash)
+   * call this before executing. Return true to approve, false to deny.
+   */
+  approver?: (toolName: string, params: Record<string, unknown>) => Promise<boolean>;
 }
 
 export interface Tool {
@@ -20,7 +25,7 @@ export interface Tool {
 
   /**
    * Execute the tool with the given arguments.
-   * Returns the result as a string (may be JSON-serialized).
+   * Returns the result as a string (JSON-serialized object).
    */
   execute(args: Record<string, unknown>, context: ToolContext): Promise<string>;
 }
