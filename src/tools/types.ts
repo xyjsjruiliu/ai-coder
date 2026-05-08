@@ -2,6 +2,12 @@
  * Tool type definitions and base interfaces.
  */
 
+/** Context injected into every tool execution. */
+export interface ToolContext {
+  /** Absolute path to the workspace root. All file paths are relative to this. */
+  workspaceRoot: string;
+}
+
 export interface Tool {
   /** Unique tool name (must match what LLM sends back) */
   name: string;
@@ -16,7 +22,7 @@ export interface Tool {
    * Execute the tool with the given arguments.
    * Returns the result as a string (may be JSON-serialized).
    */
-  execute(args: Record<string, unknown>): Promise<string>;
+  execute(args: Record<string, unknown>, context: ToolContext): Promise<string>;
 }
 
 /** Result returned by a tool execution. */

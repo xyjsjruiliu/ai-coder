@@ -36,7 +36,7 @@ function createMockProvider(
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeToolRegistry() {
-  const registry = new ToolRegistry();
+  const registry = new ToolRegistry({ workspaceRoot: '/tmp/test-workspace' });
 
   registry.register({
     name: 'read_file',
@@ -282,7 +282,7 @@ describe('AgentLoop', () => {
 
     it('should execute tools in parallel when multiple', async () => {
       const execOrder: string[] = [];
-      const parallelRegistry = new ToolRegistry();
+      const parallelRegistry = new ToolRegistry({ workspaceRoot: '/tmp/test-workspace' });
       parallelRegistry.register({
         name: 'tool_a',
         description: 'A',
@@ -734,7 +734,7 @@ describe('AgentLoop', () => {
         yield { type: 'stop', stop_reason: 'tool_use', usage: { input_tokens: 5, output_tokens: 3 } };
       });
 
-      const agent = new AgentLoop(provider, new ToolRegistry(), 'test-model', {
+      const agent = new AgentLoop(provider, new ToolRegistry({ workspaceRoot: '/tmp/test-workspace' }), 'test-model', {
         maxTurns: 5,
         systemPrompt: 'Test.',
       });

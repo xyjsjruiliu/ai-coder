@@ -87,23 +87,81 @@ export class OpenAIProvider implements LLMProvider {
     stream: boolean;
     stream_options: { include_usage: boolean };
   } {
-    const converted = messages.map((m) => {
+    const converted: Record<string, unknown>[] = [];
+
+    for (const m of messages) {
+      // ── Handle assistant message with tool_use blocks ──
+      if (m.role === 'assistant' && Array.isArray(m.content)) {
+        const blocks: any[] = m.content;
+        const toolUses = blocks.filter((b: any) => b.type === 'tool_use');
+        const textBlocks = blocks.filter((b: any) => b.type === 'text');
+
+        if (toolUses.length > 0) {
+          const msg: Record<string, unknown> = { role: 'assistant' };
+
+          // Text → content (string or null)
+          if (textBlocks.length > 0) {
+            msg.content = textBlocks.map((b: any) => b.text).join('');
+          } else {
+            msg.content = null;
+          }
+
+          // tool_use → top-level tool_calls
+          msg.tool_calls = toolUses.map((tu: any) => ({
+            id: tu.id,
+            type: 'function',
+            function: {
+              name: tu.name,
+              arguments: JSON.stringify(tu.input),
+            },
+          }));
+
+          converted.push(msg);
+          continue;
+        }
+      }
+
+      // ── Detect tool_result messages and convert to OpenAI tool role ──
+      if (Array.isArray(m.content)) {
+        const toolBlocks: any[] = m.content.filter((b: any) => b.type === 'tool_result');
+        if (toolBlocks.length > 0) {
+          for (const tb of toolBlocks) {
+            converted.push({
+              role: 'tool',
+              tool_call_id: tb.tool_use_id,
+              content: typeof tb.content === 'string' ? tb.content : JSON.stringify(tb.content),
+            });
+          }
+          // Also add any non-tool_result blocks as separate message
+          const nonToolBlocks = m.content.filter((b: any) => b.type !== 'tool_result');
+          if (nonToolBlocks.length > 0) {
+            const content = convertContent(nonToolBlocks);
+            if (content) {
+              converted.push({ role: m.role, content });
+            }
+          }
+          continue;
+        }
+      }
+
+      // Normal message conversion
       const content = convertContent(m.content);
       // Check for base64 image in string content
       if (typeof m.content === 'string' && m.content.startsWith('data:image/')) {
         const match = m.content.match(/^data:(image\/[^;]+);base64,(.+)$/s);
         if (match) {
-          return {
+          converted.push({
             role: m.role,
             content: [{
               type: 'image_url',
               image_url: { url: `data:${match[1]};base64,${match[2]}` },
             }],
-          };
+          });
+          continue;
         }
       }
-      return { role: m.role, content };
-    });
+      converted.push({ role: m.role, content });
+    }
 
     return {
       model: opts?.model ?? 'gpt-4o',

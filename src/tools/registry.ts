@@ -2,10 +2,15 @@
  * Tool Registry — manages registered tools and dispatches execution.
  */
 
-import { Tool } from './types.js';
+import { Tool, ToolContext } from './types.js';
 
 export class ToolRegistry {
   private tools = new Map<string, Tool>();
+  private context: ToolContext;
+
+  constructor(context: ToolContext) {
+    this.context = context;
+  }
 
   /** Register a tool */
   register(tool: Tool): void {
@@ -40,7 +45,7 @@ export class ToolRegistry {
       return `Error: Unknown tool "${name}"`;
     }
     try {
-      return await tool.execute(args);
+      return await tool.execute(args, this.context);
     } catch (err) {
       return `Error executing "${name}": ${(err as Error).message}`;
     }
@@ -49,5 +54,10 @@ export class ToolRegistry {
   /** Check if a tool exists */
   has(name: string): boolean {
     return this.tools.has(name);
+  }
+
+  /** Get the number of registered tools */
+  get size(): number {
+    return this.tools.size;
   }
 }

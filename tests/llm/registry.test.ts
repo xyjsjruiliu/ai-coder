@@ -5,9 +5,11 @@
 import { describe, it, expect } from 'vitest';
 import { ToolRegistry } from '../../src/tools/registry.js';
 
+const CTX = { workspaceRoot: '/tmp/test-ws' };
+
 describe('ToolRegistry', () => {
   it('should register and retrieve tools', () => {
-    const registry = new ToolRegistry();
+    const registry = new ToolRegistry(CTX);
     registry.register({
       name: 'echo',
       description: 'Echo back input',
@@ -20,7 +22,7 @@ describe('ToolRegistry', () => {
   });
 
   it('should throw on duplicate registration', () => {
-    const registry = new ToolRegistry();
+    const registry = new ToolRegistry(CTX);
     registry.register({
       name: 'test',
       description: 't',
@@ -39,7 +41,7 @@ describe('ToolRegistry', () => {
   });
 
   it('should execute a registered tool', async () => {
-    const registry = new ToolRegistry();
+    const registry = new ToolRegistry(CTX);
     registry.register({
       name: 'add',
       description: 'Add two numbers',
@@ -58,7 +60,7 @@ describe('ToolRegistry', () => {
   });
 
   it('should return error for unknown tool', async () => {
-    const registry = new ToolRegistry();
+    const registry = new ToolRegistry(CTX);
     const result = await registry.execute('nonexistent', {});
     expect(result).toContain('Unknown tool');
   });

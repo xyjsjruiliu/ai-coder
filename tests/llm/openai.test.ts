@@ -150,7 +150,7 @@ describe('OpenAIProvider', () => {
       expect(content[0].type).toBe('text');
     });
 
-    it('should convert tool_use ContentBlock', () => {
+    it('should convert tool_use ContentBlock to top-level tool_calls', () => {
       const req = provider.buildRequest([
         {
           role: 'assistant',
@@ -158,9 +158,13 @@ describe('OpenAIProvider', () => {
         },
       ]);
 
-      const content = req.messages[0].content as any[];
-      expect(content[0].type).toBe('tool_use');
-      expect(content[0].id).toBe('call_123');
+      // tool_use now converted to top-level tool_calls (OpenAI format)
+      expect(req.messages[0].role).toBe('assistant');
+      expect(req.messages[0].content).toBeNull();
+      expect(req.messages[0].tool_calls).toHaveLength(1);
+      expect(req.messages[0].tool_calls[0].id).toBe('call_123');
+      expect(req.messages[0].tool_calls[0].type).toBe('function');
+      expect(req.messages[0].tool_calls[0].function.name).toBe('read');
     });
 
     it('should detect base64 image and convert to image_url format', () => {

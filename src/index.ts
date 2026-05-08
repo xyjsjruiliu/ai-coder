@@ -32,7 +32,8 @@ export type { AgentConfig, AgentState } from './agent/loop.js';
 
 // ── Tools ──────────────────────────────────────────────────────────────────
 export { ToolRegistry } from './tools/registry.js';
-export type { Tool, ToolResult } from './tools/types.js';
+export { readFileTool } from './tools/read_file.js';
+export type { Tool, ToolContext, ToolResult } from './tools/types.js';
 
 // ── Config ─────────────────────────────────────────────────────────────────
 export { readConfig, resetConfigCache, ConfigSchema } from './config/loader.js';

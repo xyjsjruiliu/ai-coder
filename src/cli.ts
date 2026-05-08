@@ -18,6 +18,7 @@ import { type LLMProvider, ProviderError } from './llm/types.js';
 import { ProviderFactory } from './llm/factory.js';
 import { AgentLoop } from './agent/loop.js';
 import { ToolRegistry } from './tools/registry.js';
+import { readFileTool } from './tools/read_file.js';
 import { renderUI } from './ui/index.js';
 
 // ─── Version ──────────────────────────────────────────────────────────────────
@@ -148,8 +149,10 @@ async function main() {
       // Create LLM provider
       const llmProvider = createProvider(provider, apiKey);
 
-      // Create AgentLoop
-      const toolRegistry = new ToolRegistry();
+      // Create AgentLoop with workspace tools
+      const workspaceRoot = process.cwd();
+      const toolRegistry = new ToolRegistry({ workspaceRoot });
+      toolRegistry.register(readFileTool);
       const agentLoop = new AgentLoop(llmProvider, toolRegistry, model, {
         maxTurns,
         systemPrompt: 'You are an AI coding assistant. Help the user with programming tasks.',
