@@ -47,7 +47,12 @@ function formatApprovalSummary(
     }
     case 'bash': {
       const cmd = String(params.command ?? '?');
-      return `bash → ${cmd.length > 80 ? cmd.slice(0, 80) + '...' : cmd}`;
+      const dangerous = params.dangerous as string[] | undefined;
+      let summary = `bash → ${cmd.length > 80 ? cmd.slice(0, 80) + '...' : cmd}`;
+      if (dangerous && dangerous.length > 0) {
+        summary += `\n   ⚠️  DANGEROUS: ${dangerous.join(', ')}`;
+      }
+      return summary;
     }
     default:
       return `${toolName} with params ${JSON.stringify(params).slice(0, 100)}`;
