@@ -36,6 +36,8 @@ export { readFileTool } from './tools/read_file.js';
 export { writeFileTool } from './tools/write_file.js';
 export { editFileTool } from './tools/edit_file.js';
 export { bashTool } from './tools/bash.js';
+export { webSearchTool } from './tools/web_search.js';
+export { webFetchTool } from './tools/web_fetch.js';
 export type { Tool, ToolContext, ToolResult } from './tools/types.js';
 
 // ── Config ─────────────────────────────────────────────────────────────────

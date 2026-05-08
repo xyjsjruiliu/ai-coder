@@ -3,4 +3,6 @@ export { readFileTool } from './read_file.js';
 export { writeFileTool } from './write_file.js';
 export { editFileTool } from './edit_file.js';
 export { bashTool } from './bash.js';
+export { webSearchTool } from './web_search.js';
+export { webFetchTool } from './web_fetch.js';
 export type { Tool, ToolContext, ToolResult } from './types.js';

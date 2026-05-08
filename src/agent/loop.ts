@@ -80,6 +80,11 @@ export class AgentLoop {
   state: AgentState;
   private model: string;
   private consecutiveErrors = 0;
+  /** Per-run counters for web tools to prevent excessive calls */
+  private webSearchCount = 0;
+  private webFetchCount = 0;
+  private readonly MAX_WEB_SEARCH_PER_RUN = 3;
+  private readonly MAX_WEB_FETCH_PER_RUN = 2;
 
   constructor(
     provider: LLMProvider,
@@ -145,6 +150,8 @@ export class AgentLoop {
     try {
       this.state.messages.push({ role: 'user', content: userInput });
       this.state.isComplete = false;
+      this.webSearchCount = 0;
+      this.webFetchCount = 0;
 
       while (
         this.state.turns < this.config.maxTurns &&
@@ -350,42 +357,45 @@ export class AgentLoop {
           content: contentBlocks,
         });
 
-        // ── 4. Execute tools (parallel if >1) ─────────────────────────────
+        // ── 4. Execute tools (parallel if >1, with web-tool limits) ────────
         if (callsToExecute.length > 0) {
           const toolResults: UnifiedMessage[] = [];
 
-          if (callsToExecute.length === 1) {
-            // Single tool — serialize
-            const tc = callsToExecute[0];
-            const result = await this.toolRegistry.execute(tc.name, tc.input);
-            toolResults.push({
-              role: 'user',
-              content: [
-                {
-                  type: 'tool_result',
-                  tool_use_id: tc.id,
-                  content: result,
-                },
-              ],
-            });
-          } else {
-            // Multiple tools — execute in parallel
-            const results = await Promise.all(
-              callsToExecute.map((tc) =>
-                this.toolRegistry.execute(tc.name, tc.input).then((result) => ({
-                  role: 'user' as const,
-                  content: [
-                    {
-                      type: 'tool_result' as const,
-                      tool_use_id: tc.id,
-                      content: result,
-                    },
-                  ],
-                })),
-              ),
-            );
-            toolResults.push(...results);
-          }
+          // Filter tool calls: enforce per-run limits on web tools
+          const limitedCalls = callsToExecute.map((tc) => {
+            if (tc.name === 'web_search') {
+              this.webSearchCount++;
+              if (this.webSearchCount > this.MAX_WEB_SEARCH_PER_RUN) {
+                return { ...tc, _blocked: true, _reason: `web_search limit reached (max ${this.MAX_WEB_SEARCH_PER_RUN} per query)` };
+              }
+            }
+            if (tc.name === 'web_fetch') {
+              this.webFetchCount++;
+              if (this.webFetchCount > this.MAX_WEB_FETCH_PER_RUN) {
+                return { ...tc, _blocked: true, _reason: `web_fetch limit reached (max ${this.MAX_WEB_FETCH_PER_RUN} per query)` };
+              }
+            }
+            return tc;
+          });
+
+          const results = await Promise.all(
+            limitedCalls.map((tc) =>
+              ((tc as any)._blocked
+                ? Promise.resolve(JSON.stringify({ success: false, error: (tc as any)._reason }))
+                : this.toolRegistry.execute(tc.name, tc.input)
+              ).then((result) => ({
+                role: 'user' as const,
+                content: [
+                  {
+                    type: 'tool_result' as const,
+                    tool_use_id: tc.id,
+                    content: result,
+                  },
+                ],
+              })),
+            ),
+          );
+          toolResults.push(...results);
 
           this.state.messages.push(...toolResults);
 

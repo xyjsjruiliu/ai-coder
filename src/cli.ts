@@ -22,6 +22,8 @@ import { readFileTool } from './tools/read_file.js';
 import { writeFileTool } from './tools/write_file.js';
 import { editFileTool } from './tools/edit_file.js';
 import { bashTool } from './tools/bash.js';
+import { webSearchTool } from './tools/web_search.js';
+import { webFetchTool } from './tools/web_fetch.js';
 import { createTerminalApprover } from './utils/approver.js';
 import { renderUI } from './ui/index.js';
 
@@ -163,6 +165,8 @@ async function main() {
       toolRegistry.register(writeFileTool);
       toolRegistry.register(editFileTool);
       toolRegistry.register(bashTool);
+      toolRegistry.register(webSearchTool);
+      toolRegistry.register(webFetchTool);
       const agentLoop = new AgentLoop(llmProvider, toolRegistry, model, {
         maxTurns,
         systemPrompt: 'You are an AI coding assistant. Help the user with programming tasks.',

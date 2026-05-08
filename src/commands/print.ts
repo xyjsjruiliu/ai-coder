@@ -9,6 +9,8 @@ import { readFileTool } from '../tools/read_file.js';
 import { writeFileTool } from '../tools/write_file.js';
 import { editFileTool } from '../tools/edit_file.js';
 import { bashTool } from '../tools/bash.js';
+import { webSearchTool } from '../tools/web_search.js';
+import { webFetchTool } from '../tools/web_fetch.js';
 import { createTerminalApprover } from '../utils/approver.js';
 import { ProviderFactory } from '../llm/factory.js';
 import type { LLMProvider } from '../llm/types.js';
@@ -102,6 +104,8 @@ export async function runPrintMode(opts: PrintOptions): Promise<void> {
   toolRegistry.register(writeFileTool);
   toolRegistry.register(editFileTool);
   toolRegistry.register(bashTool);
+  toolRegistry.register(webSearchTool);
+  toolRegistry.register(webFetchTool);
   const agent = new AgentLoop(provider, toolRegistry, opts.model, {
     maxTurns: opts.maxTurns,
     systemPrompt: 'You are an AI coding assistant. Be concise and helpful. When you need to read or edit files, use the available tools.',
