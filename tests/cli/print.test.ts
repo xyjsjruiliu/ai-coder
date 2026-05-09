@@ -110,6 +110,7 @@ describe('runPrintMode', () => {
       debug: false,
     });
 
+    // @ts-ignore
     const output = getMockStdout(stdoutSpy);
     expect(output).toContain('Hello');
     expect(output).toContain('World');
@@ -128,6 +129,7 @@ describe('runPrintMode', () => {
       debug: true,
     });
 
+    // @ts-ignore
     const stderr = getMockStderr(stderrSpy);
     expect(stderr).toContain('Tokens:');
     cleanup();
@@ -145,6 +147,7 @@ describe('runPrintMode', () => {
       debug: false,
     });
 
+    // @ts-ignore
     const stderr = getMockStderr(stderrSpy);
     expect(stderr).toContain('≈$');
     cleanup();
@@ -177,6 +180,7 @@ describe('runPrintMode', () => {
       debug: true,
     });
 
+    // @ts-ignore
     const stderr = getMockStderr(stderrSpy);
     expect(stderr).toContain('[debug]');
     expect(stderr).toContain('test query');

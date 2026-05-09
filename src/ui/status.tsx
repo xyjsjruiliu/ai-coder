@@ -1,14 +1,14 @@
 /// <reference types="ink" />
 
 /**
- * Status bar component — shows model, token usage, cost, turn count.
+ * Status bar component — shows model, token usage, cost, turn count, and permission mode.
  *
  * Rendered at the bottom of the UI, above the input panel.
- * Ink 5.x has no Spinner — we use a manual frame cycler.
  */
 
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
+import { PermissionMode, MODE_LABELS } from '../security/index.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +20,7 @@ export interface StatusBarProps {
   cost: number;
   turns: number;
   isLoading: boolean;
+  mode?: PermissionMode;
 }
 
 // ─── Cost estimates (approximate, per 1M tokens) ──────────────────────────────
@@ -71,8 +72,10 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   cost,
   turns,
   isLoading,
+  mode,
 }) => {
   const costStr = estimateCost(model, inputTokens, outputTokens);
+  const modeLabel = mode ? MODE_LABELS[mode] : 'Default';
 
   return (
     <Box flexDirection="column">
@@ -90,6 +93,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           {provider}:{model}
         </Text>
         <Text dimColor> | T:{turns}</Text>
+        <Text dimColor> | Mode:{modeLabel}</Text>
         {(inputTokens > 0 || outputTokens > 0) && (
           <Text dimColor>
             {' '}

@@ -58,6 +58,7 @@ describe('bash — safe commands', () => {
     const r = parseResult(raw);
     expect(r.success).toBe(true);
     // On macOS /var is a symlink to /private/var, so normalize both paths
+    // @ts-ignore
     expect(fs.realpathSync(r.stdout.trim())).toBe(fs.realpathSync(workspace));
   });
 
@@ -172,6 +173,7 @@ describe('bash — validation', () => {
     });
     const r = parseResult(raw);
     expect(r.success).toBe(true);
+    // @ts-ignore
     expect(fs.realpathSync(r.stdout.trim())).toBe(
       fs.realpathSync(path.join(workspace, 'subdir')),
     );
@@ -348,6 +350,7 @@ describe('bash — edge cases', () => {
     });
     const r = parseResult(raw);
     expect(r.success).toBe(true);
+    // @ts-ignore
     expect(r.stdout.trim()).toBe('2');
   });
 

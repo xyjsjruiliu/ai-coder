@@ -60,4 +60,11 @@ export class ToolRegistry {
   get size(): number {
     return this.tools.size;
   }
+
+  /** Replace the approver callback (for UI integration) */
+  setApprover(
+    approver: (toolName: string, params: Record<string, unknown>, dangerInfo?: string) => Promise<boolean>,
+  ): void {
+    this.context.approver = approver;
+  }
 }

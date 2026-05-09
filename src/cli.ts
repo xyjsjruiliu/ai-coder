@@ -26,6 +26,7 @@ import { webSearchTool } from './tools/web_search.js';
 import { webFetchTool } from './tools/web_fetch.js';
 import { createTerminalApprover } from './utils/approver.js';
 import { renderUI } from './ui/index.js';
+import { WorkspaceTrustManager, promptWorkspaceTrust } from './security/trust.js';
 
 // ─── Version ──────────────────────────────────────────────────────────────────
 
@@ -173,8 +174,20 @@ async function main() {
         debug: opts.debug ?? false,
       });
 
+      // ═══ Trust workspace (BEFORE Ink takes over the terminal) ═══
+      const trustManager = new WorkspaceTrustManager();
+      const trusted = trustManager.isTrusted(workspaceRoot);
+      if (!trusted) {
+        const userTrusted = promptWorkspaceTrust(workspaceRoot);
+        if (userTrusted) {
+          trustManager.trust(workspaceRoot);
+        }
+        // If not trusted, the TUI still launches but in plan mode
+        // (app.tsx will detect this and set PermissionMode.Plan)
+      }
+
       // Launch Ink TUI
-      renderUI(agentLoop, model, provider);
+      renderUI(agentLoop, model, provider, workspaceRoot);
     });
 
   await program.parseAsync(process.argv);

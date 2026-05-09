@@ -40,6 +40,12 @@ export { webSearchTool } from './tools/web_search.js';
 export { webFetchTool } from './tools/web_fetch.js';
 export type { Tool, ToolContext, ToolResult } from './tools/types.js';
 
+// ── Security ───────────────────────────────────────────────────────────────
+export { PermissionEngine } from './security/permissions.js';
+export { WorkspaceTrustManager } from './security/trust.js';
+export { PermissionMode, ALL_MODES, MODE_LABELS } from './security/types.js';
+export type { SecurityConfig, GateContext, GateResult, ToolGateRule } from './security/types.js';
+
 // ── Config ─────────────────────────────────────────────────────────────────
 export { readConfig, resetConfigCache, ConfigSchema } from './config/loader.js';
 export type { AICoderConfig, ProviderConfig } from './config/loader.js';
