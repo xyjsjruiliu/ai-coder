@@ -1,0 +1,14 @@
+=== Prompt === 2026-06-24 16:06:40
+{
+  "role": "user",
+  "content": [
+    {
+      "type": "text",
+      "text": "你好"
+    }
+  ]
+}
+
+=== Response === 2026-06-24 16:06:50 model=minimax-m3:cloud
+[{'type': 'thinking', 'thinking': 'The user just said "你好" (Hello in Chinese). This is a simple greeting. According to my action principles, I should:\n1. Include a <summary> tag with a one-line physical snapshot\n2. Respond in the user\'s language (Chinese)\n\nThe user hasn\'t asked for any task, so no tool calls are needed. I should just greet them back and ask how I can help.\n\nThe constitution says "If the user\'s request is not yet complete, tool calls are required!" - but a simple greeting doesn\'t require tools. The user hasn\'t given a request yet.'}, {'type': 'text', 'text': '<summary>用户发送简单问候"你好"，无需工具调用，等待用户说明需求。</summary>\n\n你好！我是 MiniMax-M3，一个具备完整物理执行能力的 AI 助手（文件 I/O、脚本执行、浏览器 JS 注入、系统级操作等）。请告诉我你需要什么帮助？'}]
+

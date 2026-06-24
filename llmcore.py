@@ -274,8 +274,8 @@ def _parse_openai_sse(resp_lines, api_mode="chat_completions"):
             except: continue
             ch = (evt.get("choices") or [{}])[0]
             delta = ch.get("delta") or {}
-            if delta.get("reasoning_content"):
-                reasoning_text += delta["reasoning_content"]
+            if rc := delta.get("reasoning_content") or delta.get("reasoning", ""):
+                reasoning_text += rc; yield rc
             if delta.get("content"):
                 text = delta["content"]; content_text += text; yield text
             for tc in (delta.get("tool_calls") or []):
@@ -334,7 +334,7 @@ def _parse_openai_json(data, api_mode="chat_completions"):
     else:
         _record_usage(data.get("usage") or {}, api_mode)
         msg = (data.get("choices") or [{}])[0].get("message", {})
-        reasoning = msg.get("reasoning_content", "")
+        reasoning = msg.get("reasoning_content") or msg.get("reasoning", "")
         if reasoning:
             blocks.append({"type": "thinking", "thinking": reasoning})
         content = msg.get("content", "")
@@ -404,13 +404,14 @@ def _openai_stream(sess, messages):
     temperature = sess.temperature
     if 'kimi' in ml or 'moonshot' in ml: temperature = 1
     elif 'minimax' in ml: temperature = max(0.01, min(temperature, 1.0))  # MiniMax requires temp in (0, 1]
-    headers = {"Authorization": f"Bearer {sess.api_key}", "Content-Type": "application/json", "Accept": "text/event-stream"}
+    headers = {"Authorization": f"Bearer {sess.api_key}", "Content-Type": "application/json", "Accept": "text/event-stream", 'originator': 'codex_exec'}
     headers["User-Agent"] = sess.user_agent
     if api_mode == "responses":
         url = auto_make_url(sess.api_base, "responses")
         payload = {"model": model, "input": _to_responses_input(messages), "stream": sess.stream, 
                    "prompt_cache_key": _RESP_CACHE_KEY, "instructions": sess.system or "You are an Omnipotent Executor.",
-                   "client_metadata": {"x-codex-window-id": f"{_RESP_CACHE_KEY}:0","x-codex-installation-id": _RESP_CODEX_KEY}}
+                   "client_metadata": {"x-codex-window-id": f"{_RESP_CACHE_KEY}:0","x-codex-installation-id": _RESP_CODEX_KEY},
+                   'include': ['reasoning.encrypted_content']}
         if sess.reasoning_effort: payload["reasoning"] = {"effort": sess.reasoning_effort}
         if sess.max_tokens: payload["max_output_tokens"] = sess.max_tokens
     else:
@@ -799,7 +800,7 @@ class ToolClient:
         raw_text = ''
         for chunk in gen:
             raw_text += chunk; yield chunk
-        _write_llm_log('Response', raw_text, self.log_path)
+        _write_llm_log('Response', raw_text, self.log_path, model=self.backend.model)
         return self._parse_mixed_response(raw_text)
 
     def _prepare_tool_instruction(self, tools):
@@ -916,13 +917,14 @@ def _ensure_text_block(blocks):
     blocks.insert(1, {"type": "text", "text": txt})
     return txt
 
-def _write_llm_log(label, content, log_path=None):
+def _write_llm_log(label, content, log_path=None, model=''):
     if not log_path:
         log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'temp/model_responses/model_responses_{os.getpid()}.txt')
     os.makedirs(os.path.dirname(os.path.abspath(log_path)), exist_ok=True)
     ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    if model: model = f' model={model}'
     with open(log_path, 'a', encoding='utf-8', errors='replace') as f:
-        f.write(f"=== {label} === {ts}\n{content}\n\n")
+        f.write(f"=== {label} === {ts}{model}\n{content}\n\n")
 
 def tryparse(json_str):
     try: return json.loads(json_str)
@@ -963,6 +965,8 @@ class MixinSession:
     def primary(self): return self._sessions[0]
     @property
     def model(self): return getattr(self._sessions[self._cur_idx], 'model', None)
+    @property
+    def current_name(self): return getattr(self._sessions[self._cur_idx], 'name', None)
     def _pick(self):
         if self._cur_idx and time.time() - self._switched_at > self._spring_sec: self._cur_idx = 0
         return self._cur_idx
@@ -1052,7 +1056,7 @@ class NativeToolClient:
             while True: 
                 chunk = next(gen); yield chunk
         except StopIteration as e: resp = e.value
-        if resp: _write_llm_log('Response', resp.raw, self.log_path)
+        if resp: _write_llm_log('Response', resp.raw, self.log_path, model=self.backend.model)
         if resp and hasattr(resp, 'tool_calls') and resp.tool_calls: self._pending_tool_ids = [tc.id for tc in resp.tool_calls]
         return resp
 
